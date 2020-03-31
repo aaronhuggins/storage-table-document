@@ -30,7 +30,7 @@ console.log(StorageTableDocument.toRow(data)) // Expected output: { __jsonKeys: 
 
 ### new StorageTableDocument(input: any)
 
-Returns a proxied instance of the StorageTableDocument class and a shallow copy of the input object. Getters and setters on the instance will use the copied object to allow updating data prior to converting to a row or an object.
+Returns a proxied instance of the StorageTableDocument class and a shallow copy of the input object. Getters and setters on the instance will use the copied object to allow updating data prior to converting to a row or an object. If the input object has a `__jsonKeys` property, the copy will be revived internally.
 
 - **toRow() =>** Returns the copied object as a flattened object with arrays and objects as jsonified strings and property `__jsonKeys`.
 - **toObject() =>** Returns the copied object as a revived object using property `__jsonKeys`.

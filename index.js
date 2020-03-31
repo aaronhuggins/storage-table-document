@@ -1,6 +1,13 @@
 class StorageTableDocument {
-  constructor (object) {
-    this._object = Object.assign({}, object)
+  constructor (input) {
+    this._jsonKeys = typeof input.__jsonKeys === 'string'
+      ? JSON.parse(input.__jsonKeys)
+      : []
+    this._object = Object.assign({}, input)
+
+    if (typeof this._object.__jsonKeys === 'string') {
+      this._object = Object.assign({}, this.toObject())
+    }
 
     return new Proxy(this, {
       get: function get (target, property) {
