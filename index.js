@@ -27,9 +27,22 @@ class StorageTableDocument {
 
   toRow () {
     const output = { __jsonKeys: [] }
+    const isArrayOrObject = function isArrayOrObject (value) {
+      if (value === null || value === undefined) {
+        return false
+      }
+
+      if (typeof value.toJSON === 'function') {
+        const char = value.toJSON().substring(0, 1)
+
+        return char === '[' || char === '{'
+      }
+
+      return Array.isArray(value) || typeof this._object[key] === 'object'
+    }
 
     Object.keys(this._object).forEach((key) => {
-      if (typeof this._object[key] === 'object' && this._object[key] !== null) {
+      if (isArrayOrObject(this._object[key])) {
         output.__jsonKeys.push(key)
         output[key] = JSON.stringify(this._object[key])
       } else {
@@ -52,7 +65,11 @@ class StorageTableDocument {
 
       Object.keys(this._object).forEach((key) => {
         if (__jsonKeys.includes(key)) {
-          output[key] = JSON.parse(this._object[key])
+          try {
+            output[key] = JSON.parse(this._object[key])
+          } catch (error) {
+            output[key] = this._object[key]
+          }
         } else {
           output[key] = this._object[key]
         }
