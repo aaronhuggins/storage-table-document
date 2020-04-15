@@ -38,7 +38,7 @@ class StorageTableDocument {
         return char === '[' || char === '{'
       }
 
-      return Array.isArray(value) || typeof this._object[key] === 'object'
+      return Array.isArray(value) || typeof value === 'object'
     }
 
     Object.keys(this._object).forEach((key) => {
