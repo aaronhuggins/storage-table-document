@@ -33,9 +33,15 @@ class StorageTableDocument {
       }
 
       if (typeof value.toJSON === 'function') {
-        const char = value.toJSON().substring(0, 1)
+        const result = value.toJSON()
 
-        return char === '[' || char === '{'
+        if (typeof result === 'string') {
+          const char = result.substring(0, 1)
+
+          return char === '[' || char === '{'
+        }
+
+        value = result
       }
 
       return Array.isArray(value) || typeof value === 'object'
