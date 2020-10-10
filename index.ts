@@ -1,12 +1,17 @@
-class StorageTableDocument {
-  constructor (input) {
+interface ObjectIntermediate {
+  __jsonKeys?: string | string[]
+  [key: string]: any
+}
+
+export class StorageTableDocument<T = any> {
+  constructor (input: T & { __jsonKeys?: string | string[] }) {
     this._jsonKeys = typeof input.__jsonKeys === 'string'
       ? JSON.parse(input.__jsonKeys)
       : []
     this._object = Object.assign({}, input)
 
     if (typeof this._object.__jsonKeys === 'string') {
-      this._object = Object.assign({}, this.toObject())
+      this._object = Object.assign({}, this.toObject()) as T
     }
 
     return new Proxy(this, {
@@ -15,18 +20,25 @@ class StorageTableDocument {
           ? target[property]
           : target._object[property]
       },
-      set: function set (target, property, value) {
+      set: function set (target, property, value, receiver) {
         if (property in target) {
           target[property] = value
         } else {
           target._object[property] = value
         }
+
+        return true
       }
     })
   }
 
-  toRow () {
-    const output = { __jsonKeys: [] }
+  private _jsonKeys: string[]
+  private _object: T & {
+    __jsonKeys?: string | string[]
+  }
+
+  toRow (): any {
+    const output: ObjectIntermediate = { __jsonKeys: [] }
     const isArrayOrObject = function isArrayOrObject (value) {
       if (value === null || value === undefined) {
         return false
@@ -49,7 +61,7 @@ class StorageTableDocument {
 
     Object.keys(this._object).forEach((key) => {
       if (isArrayOrObject(this._object[key])) {
-        output.__jsonKeys.push(key)
+        if (Array.isArray(output.__jsonKeys)) output.__jsonKeys.push(key)
         output[key] = JSON.stringify(this._object[key])
       } else {
         output[key] = this._object[key]
@@ -63,10 +75,10 @@ class StorageTableDocument {
     return output
   }
 
-  toObject () {
-    let output = {}
+  toObject (): T {
+    let output: ObjectIntermediate = {}
 
-    if (this._object.__jsonKeys !== undefined) {
+    if (typeof this._object.__jsonKeys === 'string') {
       const __jsonKeys = JSON.parse(this._object.__jsonKeys)
 
       Object.keys(this._object).forEach((key) => {
@@ -88,16 +100,14 @@ class StorageTableDocument {
       delete output.__jsonKeys
     }
 
-    return output
+    return output as T
   }
 
-  static toObject (input) {
-    return new StorageTableDocument(input).toObject()
+  static toObject<T = any> (input: T & { __jsonKeys?: string | string[] }) {
+    return new StorageTableDocument<T>(input).toObject()
   }
 
-  static toRow (input) {
-    return new StorageTableDocument(input).toRow()
+  static toRow<T = any> (input: T & { __jsonKeys?: string | string[] }) {
+    return new StorageTableDocument<T>(input).toRow()
   }
 }
-
-module.exports = { StorageTableDocument }
