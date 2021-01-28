@@ -5,10 +5,8 @@ interface ObjectIntermediate {
 
 export class StorageTableDocument<T = any> {
   constructor (input: T & { __jsonKeys?: string | string[] }) {
-    this._jsonKeys = typeof input.__jsonKeys === 'string'
-      ? JSON.parse(input.__jsonKeys)
-      : []
     this._object = Object.assign({}, input)
+    this._aggressive = false
 
     if (typeof this._object.__jsonKeys === 'string') {
       this._object = Object.assign({}, this.toObject()) as T
@@ -32,9 +30,15 @@ export class StorageTableDocument<T = any> {
     })
   }
 
-  private _jsonKeys: string[]
   private _object: T & {
     __jsonKeys?: string | string[]
+  }
+  private _aggressive: boolean
+
+  mode (aggressive: boolean = false) {
+    this._aggressive = aggressive
+
+    return this
   }
 
   toRow (): any {
@@ -59,14 +63,14 @@ export class StorageTableDocument<T = any> {
       return Array.isArray(value) || typeof value === 'object'
     }
 
-    Object.keys(this._object).forEach((key) => {
+    for (const key of Object.keys(this._object)) {
       if (isArrayOrObject(this._object[key])) {
         if (Array.isArray(output.__jsonKeys)) output.__jsonKeys.push(key)
         output[key] = JSON.stringify(this._object[key])
       } else {
         output[key] = this._object[key]
       }
-    })
+    }
 
     if (Array.isArray(output.__jsonKeys)) {
       output.__jsonKeys = JSON.stringify(output.__jsonKeys)
@@ -77,11 +81,41 @@ export class StorageTableDocument<T = any> {
 
   toObject (): T {
     let output: ObjectIntermediate = {}
+    const maybeJson = (value: string): boolean => {
+      if (typeof value !== 'string') return false
 
-    if (typeof this._object.__jsonKeys === 'string') {
+      const trimmed = value.trim()
+      const startChar = trimmed.substring(0, 1)
+      const endChar = trimmed.substring(trimmed.length - 1, trimmed.length)
+
+      return (startChar === '[' && endChar === ']') || (startChar === '{' && endChar === '}')
+    }
+
+    if (this._aggressive) {
+      let __jsonKeys = []
+
+      if (typeof this._object.__jsonKeys === 'string') {
+        try {
+          __jsonKeys = JSON.parse(this._object.__jsonKeys)
+        } catch (err) {}
+      }
+
+      for (const key of Object.keys(this._object)) {
+        if (__jsonKeys.includes(key) || maybeJson(this._object[key])) {
+          try {
+            output[key] = JSON.parse(this._object[key])
+          } catch (error) {
+            output[key] = this._object[key]
+          }
+        } else {
+          output[key] = this._object[key]
+        }
+      }
+      
+    } else if (typeof this._object.__jsonKeys === 'string') {
       const __jsonKeys = JSON.parse(this._object.__jsonKeys)
 
-      Object.keys(this._object).forEach((key) => {
+      for (const key of Object.keys(this._object)) {
         if (__jsonKeys.includes(key)) {
           try {
             output[key] = JSON.parse(this._object[key])
@@ -91,7 +125,7 @@ export class StorageTableDocument<T = any> {
         } else {
           output[key] = this._object[key]
         }
-      })
+      }
     } else {
       output = this._object
     }
@@ -103,8 +137,8 @@ export class StorageTableDocument<T = any> {
     return output as T
   }
 
-  static toObject<T = any> (input: T & { __jsonKeys?: string | string[] }) {
-    return new StorageTableDocument<T>(input).toObject()
+  static toObject<T = any> (input: T & { __jsonKeys?: string | string[] }, aggressive: boolean = false) {
+    return new StorageTableDocument<T>(input).mode(aggressive).toObject()
   }
 
   static toRow<T = any> (input: T & { __jsonKeys?: string | string[] }) {
